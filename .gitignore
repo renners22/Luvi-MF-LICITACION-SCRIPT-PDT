@@ -1,0 +1,20 @@
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.cache/
+*.log
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
