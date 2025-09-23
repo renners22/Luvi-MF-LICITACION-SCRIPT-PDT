@@ -13,6 +13,9 @@ def _hash_payload(p):
 
 
 def insert_event(sess, familia, event_type, event_key, occurred_at, payload):
+    # ⬅️ Nuevo: Obtiene el user_id del objeto de sesión
+    user_id = getattr(sess, "user_id", None)
+    
     cnpj = ...
     h = _hash_payload(payload)
 
@@ -25,7 +28,8 @@ def insert_event(sess, familia, event_type, event_key, occurred_at, payload):
     )
 
     doc = {
-        "tenant": {"cnpj": cnpj},
+        # ⬅️ Actualizado: Agrega el user_id al sub-documento 'tenant'
+        "tenant": {"cnpj": cnpj, "user_id": user_id}, 
         "familia": familia,
         "event_type": event_type,
         "event_key": str(event_key),
@@ -75,6 +79,7 @@ _events.create_index(
 class _DummySession:
     def __init__(self):
         self.tenant_cnpj = None
+        self.user_id = None # ⬅️ Nuevo: Agrega el user_id a la sesión
 
     def __enter__(self):
         return self
@@ -99,30 +104,30 @@ def _to_dt(x):
     return datetime.fromisoformat(x)
 
 
-def insert_event(sess, familia, event_type, event_key, occurred_at, payload: dict):
-    # CNPJ del tenant: usa sess.tenant_cnpj si existe; si no, trata de deducir
-    cnpj = (
-        getattr(sess, "tenant_cnpj", None)
-        or payload.get("cnpj")
-        or payload.get("cpfCnpj")
-        or (payload.get("fornecedor") or {}).get("cnpjCpf")
-        or (payload.get("favorecido") or {}).get("cpfCnpj")
-        or (payload.get("estabelecimento") or {}).get("cnpjCpf")
-        or ""
-    )
-    cnpj = "".join(ch for ch in str(cnpj) if ch.isdigit())[:14]
+# def insert_event(sess, familia, event_type, event_key, occurred_at, payload: dict):
+#     # CNPJ del tenant: usa sess.tenant_cnpj si existe; si no, trata de deducir
+#     cnpj = (
+#         getattr(sess, "tenant_cnpj", None)
+#         or payload.get("cnpj")
+#         or payload.get("cpfCnpj")
+#         or (payload.get("fornecedor") or {}).get("cnpjCpf")
+#         or (payload.get("favorecido") or {}).get("cpfCnpj")
+#         or (payload.get("estabelecimento") or {}).get("cnpjCpf")
+#         or ""
+#     )
+#     cnpj = "".join(ch for ch in str(cnpj) if ch.isdigit())[:14]
 
-    doc = {
-        "tenant": {"cnpj": cnpj},
-        "familia": familia,
-        "event_type": event_type,
-        "event_key": str(event_key),
-        "occurred_at": _to_dt(occurred_at),
-        "payload": payload,
-    }
-    _events.update_one(
-        {"tenant.cnpj": cnpj, "event_key": doc["event_key"]}, {"$set": doc}, upsert=True
-    )
+#     doc = {
+#         "tenant": {"cnpj": cnpj},
+#         "familia": familia,
+#         "event_type": event_type,
+#         "event_key": str(event_key),
+#         "occurred_at": _to_dt(occurred_at),
+#         "payload": payload,
+#     }
+#     _events.update_one(
+#         {"tenant.cnpj": cnpj, "event_key": doc["event_key"]}, {"$set": doc}, upsert=True
+#     )
 
 
 # Si prefieres seguir usando tu nombre nuevo:

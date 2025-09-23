@@ -7,16 +7,16 @@ FAMILIA = "sancoes"
 
 ENDPOINTS = {
     "ceis": {
-        "param": "codigoSancionado",                 # <- ESTE es el correcto
+        "param": "codigoSancionado",
         "event_type": "ceis_sancao",
         "date_fields": ["dataInicioSancao", "dataPublicacao", "data"],
         "id_fields": ["id", "numeroProcesso", "processo"],
     },
     "cnep": {
-        "param": "codigoSancionado",                 # <- idem
+        "param": "codigoSancionado",
         "event_type": "cnep_sancao",
         "date_fields": ["dataInicioSancao", "dataPublicacao", "data"],
-        "id_fields": ["id", "numeroProcesso", "processo"],
+        "id_fields": ["id", "numeroProcesso", "proceso"],
     },
 }
 
@@ -43,17 +43,19 @@ def _codigo_do_item(item: dict) -> str:
     )
     return only_digits(val or "")
 
-def run(cnpj_cpf: str, which: list[str] | None = None):
+# ⬅️ Nuevo: Se agrega el `user_id` como parámetro a la función `run`
+def run(cnpj_cpf: str, user_id: str, which: list[str] | None = None):
     codigo = only_digits(cnpj_cpf)
     client = PTClient()
     which = which or list(ENDPOINTS.keys())
 
     with SessionLocal() as sess:
         sess.tenant_cnpj = codigo
+        sess.user_id = user_id # ⬅️ Nuevo: Se asigna el `user_id` a la sesión
 
         for path in which:
             cfg = ENDPOINTS[path]
-            params = {cfg["param"]: codigo}  # ✅ filtro correcto
+            params = {cfg["param"]: codigo}
 
             for item in client.get_pages(path, params):
                 # seguridad extra: si el item no corresponde al CNPJ/CPF pedido, lo saltamos
@@ -76,6 +78,8 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--cnpj", required=True, help="CNPJ o CPF (solo dígitos)")
+    ap.add_argument("--user-id", required=True) # ⬅️ Nuevo: Se agrega el argumento `user-id`
     ap.add_argument("--only", nargs="*", default=None, help="ej: --only ceis cnep")
     args = ap.parse_args()
-    run(args.cnpj, args.only)
+    # ⬅️ Nuevo: Se llama a la función `run` con el `user_id`
+    run(args.cnpj, args.user_id, args.only)

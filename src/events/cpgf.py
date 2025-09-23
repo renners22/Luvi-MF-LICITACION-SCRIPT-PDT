@@ -17,7 +17,8 @@ def _pt_date(d: str) -> str:
         return f"{p[2]}/{p[1]}/{p[0]}"
     return d
 
-def run(cnpj: str, start_date: str | None = None, end_date: str | None = None):
+# ⬅️ Nuevo: Se agrega el `user_id` como parámetro a la función `run`
+def run(cnpj: str, user_id: str, start_date: str | None = None, end_date: str | None = None):
     cnpj = only_digits(cnpj)
     client = PTClient()
 
@@ -31,7 +32,8 @@ def run(cnpj: str, start_date: str | None = None, end_date: str | None = None):
         params["dataTransacaoFim"] = _pt_date(end_date)
 
     with SessionLocal() as sess:
-        sess.tenant_cnpj = cnpj  # asegura tenant.cnpj en Mongo
+        sess.tenant_cnpj = cnpj
+        sess.user_id = user_id  # ⬅️ Nuevo: Se asigna el `user_id` a la sesión
 
         for tx in client.get_pages(PATH, params):
             # Fecha/hora defensiva
@@ -53,9 +55,10 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--cnpj", required=True)
+    ap.add_argument("--user-id", required=True) # ⬅️ Nuevo: Se agrega el argumento `user-id`
     ap.add_argument("--start", default=None, help="(opcional) YYYY-MM-DD o DD/MM/YYYY")
     ap.add_argument("--end", default=None, help="(opcional) YYYY-MM-DD o DD/MM/YYYY")
     args = ap.parse_args()
-    run(args.cnpj, args.start, args.end)
-
+    # ⬅️ Nuevo: Se llama a la función `run` con el `user_id`
+    run(args.cnpj, args.user_id, args.start, args.end)
 # python -m src.events.cpgf --cnpj 39435028000197
