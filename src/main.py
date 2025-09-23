@@ -1,3 +1,4 @@
+# este file esta redundante. por ahora inutil.
 import argparse
 from events import despesas, contratos, notas_fiscais, cpgf, integridade
 
