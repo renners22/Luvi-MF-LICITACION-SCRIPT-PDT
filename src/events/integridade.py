@@ -7,13 +7,13 @@ FAMILIA = "sancoes"
 
 ENDPOINTS = {
     "ceis": {
-        "param": "codigoSancionado",
+        "param": "codigoSancionado",                 # <- ESTE es el correcto
         "event_type": "ceis_sancao",
         "date_fields": ["dataInicioSancao", "dataPublicacao", "data"],
         "id_fields": ["id", "numeroProcesso", "processo"],
     },
     "cnep": {
-        "param": "codigoSancionado",
+        "param": "codigoSancionado",                 # <- idem
         "event_type": "cnep_sancao",
         "date_fields": ["dataInicioSancao", "dataPublicacao", "data"],
         "id_fields": ["id", "numeroProcesso", "proceso"],
@@ -35,11 +35,10 @@ def _pick_date(d: dict, keys: list[str]) -> str:
     return "1970-01-01"
 
 def _codigo_do_item(item: dict) -> str:
-    # intenta varias rutas; normaliza a solo dígitos
+    """Extrae un CNPJ/CPF de un item de las listas de sancionados."""
     val = (
-        _pick(item, ["codigoSancionado"]) or
-        _pick(item.get("sancionado", {}), ["codigoFormatado"]) or
-        _pick(item.get("pessoa", {}), ["cnpjFormatado", "cpfFormatado"])
+        _pick(item, ["cnpjSancionado", "cpfSancionado"])
+        or _pick(item.get("pessoa", {}), ["cnpjFormatado", "cpfFormatado"])
     )
     return only_digits(val or "")
 
@@ -55,7 +54,7 @@ def run(cnpj_cpf: str, user_id: str, which: list[str] | None = None):
 
         for path in which:
             cfg = ENDPOINTS[path]
-            params = {cfg["param"]: codigo}
+            params = {cfg["param"]: codigo}  # ✅ filtro correcto
 
             for item in client.get_pages(path, params):
                 # seguridad extra: si el item no corresponde al CNPJ/CPF pedido, lo saltamos
@@ -79,7 +78,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--cnpj", required=True, help="CNPJ o CPF (solo dígitos)")
     ap.add_argument("--user-id", required=True) # ⬅️ Nuevo: Se agrega el argumento `user-id`
-    ap.add_argument("--only", nargs="*", default=None, help="ej: --only ceis cnep")
+    ap.add_argument("--which", nargs="+", help="ceis, cnep, ...")
     args = ap.parse_args()
-    # ⬅️ Nuevo: Se llama a la función `run` con el `user_id`
-    run(args.cnpj, args.user_id, args.only)
+    run(args.cnpj, args.user_id, args.which)

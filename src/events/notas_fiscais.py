@@ -7,7 +7,7 @@ from ..config import DEFAULT_START_DATE
 FAMILIA = "nfe"
 PATH = "notas-fiscais"
 
-# ⬅️ Novo: A função `run` agora recebe o `user_id`
+# ⬅️ Nuevo: La función `run` ahora recibe el `user_id`
 def run(cnpj: str, user_id: str, codigo_orgao: str | None = None, nome_produto: str | None = None):
     """
     Requisitos mínimos do endpoint:
@@ -28,7 +28,7 @@ def run(cnpj: str, user_id: str, codigo_orgao: str | None = None, nome_produto: 
 
     with SessionLocal() as sess:
         sess.tenant_cnpj = cnpj
-        sess.user_id = user_id  # ⬅️ Novo: Assina o `user_id` à sessão
+        sess.user_id = user_id  # ⬅️ Nuevo: Asigna el `user_id` a la sesión
 
         for nfe in client.get_pages(PATH, params):
             # Campos típicos (defensivo)
@@ -37,7 +37,7 @@ def run(cnpj: str, user_id: str, codigo_orgao: str | None = None, nome_produto: 
             serie  = str(nfe.get("serie") or "")
             data   = iso_date(nfe.get("dataEmissao") or nfe.get("data") or "")
 
-            # event_key: usa a chave si existe; si no, arma uma com numero|serie|data
+            # event_key: usa la chave si existe; si no, arma una con numero|serie|data
             event_key = chave if chave else f"{numero}|{serie}|{data}"
             occurred  = f"{data} 00:00:00" if data else None
 
@@ -49,11 +49,11 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--cnpj", required=True)
-    ap.add_argument("--user-id", required=True) # ⬅️ Novo: Agrega el argumento `user-id`
-    ap.add_argument("--orgao", dest="codigo_orgao", default=None, help="(Opcional) Código SIAFI do órgão")
-    ap.add_argument("--produto", dest="nome_produto", default=None, help="(Opcional) Nome do produto")
+    ap.add_argument("--user-id", required=True) # ⬅️ Nuevo: Agrega el argumento `user-id`
+    ap.add_argument("--orgao", dest="codigo_orgao", default=None)
+    ap.add_argument("--produto", dest="nome_produto", default=None)
     args = ap.parse_args()
-    # ⬅️ Novo: Chama a função `run` com o `user_id`
     run(args.cnpj, args.user_id, args.codigo_orgao, args.nome_produto)
+
 
 # python -m src.events.notas_fiscais --cnpj 39435028000197
