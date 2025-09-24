@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 DOC_RAW="${1:-}"
-USER_ID_RAW="${2:-}" # ⬅️ Nuevo: Lee el segundo argumento
+USER_ID_RAW="${2:-}"
 if [[ -z "$DOC_RAW" ]]; then
   echo "[ERR] uso: $0 <cpf_ou_cnpj> <user_id>"
   exit 2
@@ -10,31 +10,36 @@ fi
 
 # normaliza a dígitos
 DOC="$(echo "$DOC_RAW" | tr -cd '0-9')"
-# ⬅️ Nuevo: Normaliza a dígitos el user_id también, por seguridad
 USER_ID="$(echo "$USER_ID_RAW" | tr -cd '0-9')"
 
-
+# --- Configuración del entorno de producción ---
 BASE="/var/www/scripts/portal_transparencia"
-source "$BASE/.venv/bin/activate"
+PYTHON_BIN="$BASE/venv/bin/python"
+
+# ✅ Se elimina el `source` que causaba problemas de entorno
+# ✅ Se elimina el bloqueo (`flock`) que causaba el error de permisos
 export PYTHONPATH="$BASE"
 
-# Evitar solapes por documento (si ya se está procesando ese doc, no lo duplica)
-LOCK="/tmp/harvest_${DOC}.lock"
-exec {lockfd}>$LOCK
-flock -n "$lockfd" || { echo "[INFO] Ya hay un harvest en curso para $DOC"; exit 0; }
+# Verificación para asegurar que la ruta de Python existe
+if [ ! -f "$PYTHON_BIN" ]; then
+    echo "[ERR] No se encontró el intérprete de Python en: $PYTHON_BIN"
+    echo "[INFO] Por favor, verifica que la ruta de tu entorno virtual sea correcta."
+    exit 1
+fi
 
-cd "$BASE"
+echo "Usando la ruta de produccion: $BASE"
+echo "Ejecutando con intérprete Python: $PYTHON_BIN"
 
-run() {
-  echo "[RUN] $*"
-  bash -lc "$*"
+# --- Ejecuta los scripts de Python directamente ---
+run_python() {
+  echo "[RUN] $PYTHON_BIN -m src.events.$1 --cnpj $DOC --user-id $USER_ID"
+  "$PYTHON_BIN" -m "src.events.$1" --cnpj "$DOC" --user-id "$USER_ID"
 }
 
-# ⬅️ Actualizado: Pasa el user_id a cada script de Python
-run "python -m src.events.notas_fiscais --cnpj $DOC --user-id $USER_ID"
-run "python -m src.events.contratos --cnpj $DOC --user-id $USER_ID"
-run "python -m src.events.despesas  --cnpj $DOC --user-id $USER_ID"
-run "python -m src.events.cpgf      --cnpj $DOC --user-id $USER_ID"
-run "python -m src.events.integridade --cnpj $DOC --user-id $USER_ID"
+run_python "notas_fiscais"
+run_python "contratos"
+run_python "despesas"
+run_python "cpgf"
+run_python "integridade"
 
 echo "[OK] Harvest finalizado para $DOC y User ID: $USER_ID"
